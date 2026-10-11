@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz Race</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏁</text></svg>">
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel-2: #1f2630; --line: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --accent: #7ee787; --accent-ink: #0d1117;
+    --warn: #f0b72f; --bad: #ff7b72; --blue: #79c0ff; --purple: #d2a8ff;
+    --mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Vazirmatn", "Noto Sans Arabic", Tahoma, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 16px/1.5 var(--sans); }
+  button, input, select { font: inherit; color: inherit; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .logo { font: 700 22px var(--mono); letter-spacing: -0.5px; }
+  .logo span { color: var(--accent); }
+  header .spacer { flex: 1; }
+  .chip { font: 600 13px var(--mono); padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+  .chip b { color: var(--text); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .game { display: grid; grid-template-columns: 1fr 280px; gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .grid2, .game { grid-template-columns: 1fr; } }
+  h2 { margin: 0 0 16px; font-size: 18px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+  input, select { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; outline: none; }
+  input:focus, select:focus { border-color: var(--blue); }
+  #join-code { font-family: var(--mono); text-transform: uppercase; letter-spacing: 6px; font-size: 20px; }
+  .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .seg button { padding: 8px 0; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-size: 14px; }
+  .seg button.on { border-color: var(--accent); color: var(--accent); background: rgba(126, 231, 135, .08); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn { display: inline-block; width: 100%; margin-top: 18px; padding: 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-weight: 700; cursor: pointer; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); font-weight: 500; }
+  .btn.small { width: auto; margin: 0; padding: 6px 12px; font-size: 13px; }
+  .error { min-height: 22px; margin-top: 12px; color: var(--bad); font-size: 14px; }
+  .muted { color: var(--muted); }
+  .center { text-align: center; }
+  .bigcode { font: 700 56px/1 var(--mono); letter-spacing: 12px; color: var(--accent); margin: 8px 0; }
+  .share { font: 14px var(--mono); color: var(--blue); word-break: break-all; }
+  .players { list-style: none; margin: 0; padding: 0; }
+  .players li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; }
+  .players li:nth-child(odd) { background: var(--panel-2); }
+  .players .rank { width: 22px; font: 700 13px var(--mono); color: var(--muted); }
+  .players .name { flex: 1; min-width: 4ch; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .players .score { font: 700 14px var(--mono); }
+  .players .me .name { color: var(--accent); font-weight: 700; }
+  .players .off { opacity: .4; }
+  .tag { flex: none; font: 600 11px var(--mono); padding: 1px 6px; border-radius: 4px; background: var(--panel-2); color: var(--muted); }
+  .tag.host { color: var(--warn); }
+  .tag.ok { color: var(--accent); } .tag.no { color: var(--bad); }
+  .lobby-players li { justify-content: flex-start; }
+  .qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .lvl-easy { color: var(--accent); } .lvl-medium { color: var(--warn); } .lvl-hard { color: var(--bad); }
+  .timer { height: 6px; background: var(--panel-2); border-radius: 99px; overflow: hidden; margin-bottom: 18px; }
+  .timer i { display: block; height: 100%; background: var(--accent); transform-origin: left; }
+  .timer.low i { background: var(--bad); }
+  .secs { font: 700 20px var(--mono); margin-left: auto; }
+  .qtext { font-size: 22px; font-weight: 600; margin: 0 0 14px; }
+  pre.code { direction: ltr; text-align: left; margin: 0 0 18px; padding: 14px 16px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; font: 15px/1.55 var(--mono); color: var(--purple); }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 560px) { .opts { grid-template-columns: 1fr; } }
+  .opt { display: flex; gap: 12px; align-items: center; text-align: left; padding: 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; font-family: var(--mono); font-size: 15px; }
+  .opt:hover:not(:disabled) { border-color: var(--blue); }
+  .opt:disabled { cursor: default; }
+  .opt span { flex: 1; text-align: left; }
+  [dir=rtl] .opt span { text-align: right; }
+  [dir=rtl] .opt { font-family: var(--sans); }
+  .opt kbd { flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; background: var(--bg); color: var(--muted); font-size: 12px; }
+  .opt.picked { border-color: var(--blue); background: rgba(121, 192, 255, .1); }
+  .opt.right { border-color: var(--accent); background: rgba(126, 231, 135, .14); }
+  .opt.wrong { border-color: var(--bad); background: rgba(255, 123, 114, .12); }
+  .opt.dim { opacity: .45; }
+  .note { margin-top: 16px; padding: 12px 14px; border-inline-start: 3px solid var(--blue); background: var(--panel-2); border-start-end-radius: 8px; border-end-end-radius: 8px; font-size: 15px; }
+  .result { font: 700 18px var(--mono); margin-top: 16px; }
+  .countdown { font: 800 140px/1 var(--mono); color: var(--accent); text-align: center; padding: 60px 0; }
+  .podium { display: flex; justify-content: center; align-items: flex-end; gap: 12px; margin: 10px 0 24px; }
+  .podium div { width: 120px; text-align: center; }
+  .podium .bar { border-radius: 8px 8px 0 0; background: var(--panel-2); border: 1px solid var(--line); border-bottom: 0; font: 800 28px var(--mono); display: grid; place-items: center; }
+  .podium .p1 .bar { height: 130px; color: var(--warn); } .podium .p2 .bar { height: 95px; color: var(--blue); } .podium .p3 .bar { height: 70px; color: var(--purple); }
+  .podium .pname { font-weight: 700; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .podium .pscore { font: 13px var(--mono); color: var(--muted); margin-bottom: 6px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">&lt;quiz<span>/race</span>&gt;</div>
+    <div class="spacer"></div>
+    <div id="hdr" class="hidden" style="display:flex;gap:8px;align-items:center">
+      <span class="chip">room <b id="hdr-code"></b></span>
+      <button class="btn ghost small" id="leave">Leave</button>
+    </div>
+  </header>
+
+  <!-- HOME -->
+  <section id="home" class="grid2">
+    <form class="panel" id="create-form">
+      <h2>Create a race</h2>
+      <label for="c-name">Nickname</label>
+      <input id="c-name" maxlength="20" autocomplete="off" required>
+      <label for="c-cat">Category</label>
+      <select id="c-cat"></select>
+      <label>Difficulty</label>
+      <div class="seg" id="c-diff">
+        <button type="button" data-v="easy" class="on">Easy</button>
+        <button type="button" data-v="medium">Medium</button>
+        <button type="button" data-v="hard">Hard</button>
+        <button type="button" data-v="mixed">Mixed</button>
+      </div>
+      <div class="row">
+        <div><label for="c-count">Questions</label>
+          <select id="c-count"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></div>
+        <div><label for="c-secs">Seconds each</label>
+          <select id="c-secs"><option>10</option><option selected>20</option><option>30</option></select></div>
+      </div>
+      <div class="muted" id="c-pool" style="font-size:13px;margin-top:8px"></div>
+      <button class="btn" type="submit">Create room</button>
+      <div class="error" id="c-err"></div>
+    </form>
+    <form class="panel" id="join-form">
+      <h2>Join a race</h2>
+      <label for="j-name">Nickname</label>
+      <input id="j-name" maxlength="20" autocomplete="off" required>
+      <label for="join-code">Room code</label>
+      <input id="join-code" maxlength="4" autocomplete="off" required>
+      <button class="btn" type="submit">Join</button>
+      <div class="error" id="j-err"></div>
+    </form>
+  </section>
+
+  <!-- IN ROOM -->
+  <section id="room" class="hidden"></section>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let info = { categories: [], lanUrls: [] };
+let session = load();
+let es = null;
+let state = null;
+let clockOffset = 0;   // serverNow - Date.now()
+let difficulty = 'easy';
+
+function load() { try { return JSON.parse(sessionStorage.getItem('quiz-session')); } catch { return null; } }
+function save(s) { session = s; try { s ? sessionStorage.setItem('quiz-session', JSON.stringify(s)) : sessionStorage.removeItem('quiz-session'); } catch {} }
+function serverNow() { return Date.now() + clockOffset; }
+
+async function api(path, body) {
+  const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Something went wrong');
+  return data;
+}
+
+// ---------- home ----------
+async function initHome() {
+  info = await (await fetch('/api/info')).json();
+  $('#c-cat').innerHTML = info.categories.map(c => `<option>${esc(c.name)}</option>`).join('')
+    + '<option value="mixed">همه دسته‌ها (mixed)</option>';
+  const name = localStorage.getItem('quiz-name') || '';
+  $('#c-name').value = $('#j-name').value = name;
+  const room = new URLSearchParams(location.search).get('room');
+  if (room) { $('#join-code').value = room.toUpperCase(); $('#j-name').focus(); }
+  updatePool();
+}
+
+function updatePool() {
+  const value = $('#c-cat').value;
+  const cats = value === 'mixed' ? info.categories : info.categories.filter(c => c.name === value);
+  const n = cats.reduce((sum, c) => sum + (difficulty === 'mixed' ? c.counts.easy + c.counts.medium + c.counts.hard : c.counts[difficulty]), 0);
+  $('#c-pool').textContent = `${n} ${difficulty} questions available`;
+}
+
+$('#c-diff').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  difficulty = b.dataset.v;
+  $('#c-diff').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  updatePool();
+});
+$('#c-cat').addEventListener('change', updatePool);
+
+$('#create-form').addEventListener('submit', async e => {
+  e.preventDefault(); $('#c-err').textContent = '';
+  try {
+    const nickname = $('#c-name').value;
+    const r = await api('/api/rooms', { nickname, category: $('#c-cat').value, difficulty, count: $('#c-count').value, seconds: $('#c-secs').value });
+    localStorage.setItem('quiz-name', nickname.trim());
+    enterRoom(r);
+  } catch (err) { $('#c-err').textContent = err.message; }
+});
+
+$('#join-form').addEventListener('submit', async e => {
+  e.preventDefault(); $('#j-err').textContent = '';
+  try {
+    const nickname = $('#j-name').value;
+    const code = $('#join-code').value.trim().toUpperCase();
+    const r = await api(`/api/rooms/${encodeURIComponent(code)}/join`, { nickname });
+    localStorage.setItem('quiz-name', nickname.trim());
+    enterRoom(r);
+  } catch (err) { $('#j-err').textContent = err.message; }
+});
+
+$('#leave').addEventListener('click', () => { if (confirm('Leave this race?')) leaveRoom(); });
+
+// ---------- room connection ----------
+function enterRoom({ code, playerId }) {
+  save({ code, playerId });
+  history.replaceState(null, '', '/');
+  connect();
+}
+
+function connect() {
+  if (es) es.close();
+  es = new EventSource(`/api/rooms/${session.code}/events?playerId=${encodeURIComponent(session.playerId)}`);
+  es.onmessage = e => {
+    state = JSON.parse(e.data);
+    clockOffset = state.serverNow - Date.now();
+    render();
+  };
+  // While OPEN/CONNECTING, EventSource retries by itself. CLOSED can mean the room is gone —
+  // or just that the page is reloading — so ask the server before dropping the session.
+  es.onerror = () => {
+    if (es.readyState === EventSource.CLOSED) setTimeout(checkRoom, 1000);
+  };
+}
+
+async function checkRoom() {
+  if (!session) return;
+  try {
+    const res = await fetch(`/api/rooms/${session.code}/status?playerId=${encodeURIComponent(session.playerId)}`);
+    if (res.status === 404) return leaveRoom('That room no longer exists.');
+  } catch {}
+  connect();
+}
+addEventListener('pageshow', e => { if (e.persisted && session) connect(); });
+
+function leaveRoom(msg) {
+  if (es) es.close();
+  es = null; state = null; save(null);
+  $('#room').classList.add('hidden'); $('#hdr').classList.add('hidden');
+  $('#home').classList.remove('hidden');
+  $('#j-err').textContent = msg || '';
+}
+
+// ---------- rendering ----------
+function render() {
+  $('#home').classList.add('hidden');
+  $('#room').classList.remove('hidden');
+  $('#hdr').classList.remove('hidden');
+  $('#hdr-code').textContent = state.code;
+  const views = { lobby: viewLobby, countdown: viewCountdown, question: viewQuestion, reveal: viewQuestion, final: viewFinal };
+  $('#room').innerHTML = views[state.phase]();
+  tickTimers();
+}
+
+const isHost = () => state.hostId === state.you;
+const categoryName = c => (c === 'mixed' ? 'All categories' : esc(c));
+const isRtl = text => /[\u0600-\u06FF]/.test(text);
+const settingsLine = () => `<span dir="auto">${categoryName(state.settings.category)}</span> · <span class="lvl-${state.settings.difficulty}">${state.settings.difficulty}</span> · ${state.total} questions · ${state.settings.seconds}s each`;
+
+function playerList({ lobby = false } = {}) {
+  return `<ul class="players ${lobby ? 'lobby-players' : ''}">${state.players.map((p, i) => {
+    let tag = '';
+    if (state.phase === 'question') tag = p.answered ? '<span class="tag ok">answered</span>' : '';
+    if (state.phase === 'reveal' && p.lastCorrect !== null) tag = p.lastCorrect ? `<span class="tag ok">+${p.lastPoints}</span>` : '<span class="tag no">✗</span>';
+    if (state.phase === 'reveal' && p.lastCorrect === null) tag = '<span class="tag no">—</span>';
+    return `<li class="${p.id === state.you ? 'me' : ''} ${p.connected ? '' : 'off'}">
+      ${lobby ? '' : `<span class="rank">${i + 1}</span>`}
+      <span class="name" dir="auto">${esc(p.name)}${lobby && p.id === state.you ? ' (you)' : ''}</span>
+      ${p.id === state.hostId ? '<span class="tag host">host</span>' : ''}
+      ${p.connected ? '' : '<span class="tag">offline</span>'}
+      ${tag}
+      ${lobby ? '' : `<span class="score">${p.score}</span>`}
+    </li>`;
+  }).join('')}</ul>`;
+}
+
+function viewLobby() {
+  const base = info.lanUrls[0] || location.origin;
+  return `<div class="grid2">
+    <div class="panel center">
+      <div class="muted">Room code</div>
+      <div class="bigcode">${state.code}</div>
+      <div class="muted" style="margin-bottom:6px">Friends on your network can open</div>
+      <div class="share">${esc(base)}/?room=${state.code}</div>
+      <p class="muted" style="margin-top:18px">${settingsLine()}</p>
+      ${isHost()
+        ? `<button class="btn" data-act="start">Start race (${state.players.length} player${state.players.length === 1 ? '' : 's'})</button>`
+        : '<p class="muted">Waiting for the host to start…</p>'}
+      <div class="error" id="room-err"></div>
+    </div>
+    <div class="panel"><h2>Players</h2>${playerList({ lobby: true })}</div>
+  </div>`;
+}
+
+function viewCountdown() {
+  return `<div class="panel"><p class="center muted">${settingsLine()}</p>
+    <div class="countdown" data-count></div><p class="center muted">Get ready!</p></div>`;
+}
+
+function viewQuestion() {
+  const q = state.question;
+  const reveal = state.reveal;
+  const opts = q.options.map((o, i) => {
+    let cls = '';
+    if (reveal) cls = i === reveal.answer ? 'right' : i === state.myAnswer ? 'wrong' : 'dim';
+    else if (i === state.myAnswer) cls = 'picked';
+    const locked = reveal || state.myAnswer !== null;
+    return `<button class="opt ${cls}" data-opt="${i}" ${locked ? 'disabled' : ''}><kbd>${i + 1}</kbd><span dir="auto">${esc(o)}</span></button>`;
+  }).join('');
+  const me = state.players.find(p => p.id === state.you);
+  let footer = '';
+  if (reveal) {
+    footer = me.lastCorrect ? `<div class="result" style="color:var(--accent)">Correct! +${me.lastPoints}</div>`
+      : `<div class="result" style="color:var(--bad)">${state.myAnswer === null ? 'Too slow!' : 'Wrong!'}</div>`;
+    if (reveal.explanation) footer += `<div class="note" dir="auto">${esc(reveal.explanation)}</div>`;
+    footer += `<p class="muted" style="font-size:13px">${q.index + 1 < state.total ? 'Next question' : 'Results'} in <span data-secs></span>s</p>`;
+  } else if (state.myAnswer !== null) {
+    footer = '<p class="muted">Answer locked — waiting for others…</p>';
+  }
+  return `<div class="game">
+    <div class="panel">
+      <div class="qhead">
+        <span class="chip">Q <b>${q.index + 1}</b>/${state.total}</span>
+        <span class="chip lvl-${q.difficulty}">${q.difficulty}</span>
+        ${state.settings.category === 'mixed' ? `<span class="chip" dir="auto">${esc(q.category)}</span>` : ''}
+        ${reveal ? '' : '<span class="secs" data-secs></span>'}
+      </div>
+      ${reveal ? '' : '<div class="timer" data-bar><i></i></div>'}
+      <div dir="${isRtl(q.question) ? 'rtl' : 'ltr'}">
+      <p class="qtext">${esc(q.question)}</p>
+      ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}
+      <div class="opts">${opts}</div>
+      </div>
+      ${footer}
+    </div>
+    <div class="panel"><h2>Leaderboard</h2>${playerList()}</div>
+  </div>`;
+}
+
+function viewFinal() {
+  const [a, b, c] = state.players;
+  const slot = (p, n) => p ? `<div class="p${n}"><div class="pname">${esc(p.name)}</div><div class="pscore">${p.score} pts</div><div class="bar">${n}</div></div>` : '';
+  const me = state.players.findIndex(p => p.id === state.you) + 1;
+  return `<div class="panel">
+    <h2 class="center">🏁 Race finished — you placed #${me}</h2>
+    <div class="podium">${slot(b, 2)}${slot(a, 1)}${slot(c, 3)}</div>
+    ${playerList()}
+    ${isHost() ? '<button class="btn" data-act="restart">Play again with new questions</button>' : '<p class="center muted">The host can start another round.</p>'}
+    <div class="error" id="room-err"></div>
+  </div>`;
+}
+
+// Timers update every frame from the server deadline (no re-render).
+function tickTimers() {
+  if (!state || !state.phaseEndsAt) return;
+  const left = Math.max(0, state.phaseEndsAt - serverNow());
+  const count = $('[data-count]'); if (count) count.textContent = Math.ceil(left / 1000) || 'Go!';
+  const secs = $('[data-secs]'); if (secs) secs.textContent = Math.ceil(left / 1000);
+  const bar = $('[data-bar]');
+  if (bar) {
+    const frac = left / (state.settings.seconds * 1000);
+    bar.querySelector('i').style.transform = `scaleX(${frac})`;
+    bar.classList.toggle('low', frac < 0.25);
+  }
+}
+(function loop() { tickTimers(); requestAnimationFrame(loop); })();
+
+// ---------- actions ----------
+async function act(path, body) {
+  try { await api(`/api/rooms/${session.code}/${path}`, { playerId: session.playerId, ...body }); }
+  catch (err) { const el = $('#room-err'); if (el) el.textContent = err.message; else console.warn(err.message); }
+}
+
+function choose(i) {
+  if (!state || state.phase !== 'question' || state.myAnswer !== null || i >= state.question.options.length) return;
+  state.myAnswer = i; render();   // optimistic lock-in
+  act('answer', { option: i });
+}
+
+$('#room').addEventListener('click', e => {
+  const opt = e.target.closest('[data-opt]'); if (opt) return choose(Number(opt.dataset.opt));
+  const btn = e.target.closest('[data-act]'); if (btn) { btn.disabled = true; act(btn.dataset.act); }
+});
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, select')) return;
+  const n = Number(e.key); if (n >= 1 && n <= 4) choose(n - 1);
+});
+
+initHome().then(() => { if (session) connect(); });
+</script>
+</body>
+</html>
